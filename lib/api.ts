@@ -35,7 +35,7 @@ export const api = {
   } = {}) {
     let url = `${SUPABASE_URL}/rest/v1/${table}`
     const params = new URLSearchParams()
-    
+
     if (options.select) params.append('select', options.select)
     if (options.limit) params.append('limit', options.limit.toString())
     if (options.order) {
@@ -64,6 +64,31 @@ export const api = {
     return response.json()
   },
 
+  // Helper pour les INSERT
+  async create(table: string, data: any) {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/${table}`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(data)
+      }
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(error)
+    }
+
+    const result = await response.json()
+    return result[0] // Retourne le premier élément créé
+  },
+
   // Helper pour les UPDATE
   async update(table: string, id: string, data: any) {
     const response = await fetch(
@@ -88,11 +113,33 @@ export const api = {
     return true
   },
 
+  // Helper pour les DELETE
+  async delete(table: string, id: string) {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`,
+      {
+        method: 'DELETE',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Prefer': 'return=minimal'
+        }
+      }
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(error)
+    }
+
+    return true
+  },
+
   // Upload d'image vers Supabase Storage
   async uploadImage(file: File, bucket: string = 'product-images'): Promise<string> {
     const timestamp = Date.now()
     const fileName = `${timestamp}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
-    
+
     const response = await fetch(
       `${SUPABASE_URL}/storage/v1/object/${bucket}/${fileName}`,
       {
