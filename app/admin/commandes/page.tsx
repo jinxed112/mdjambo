@@ -57,6 +57,7 @@ export default function CommandeFournisseurs() {
   const [reorganizeMode, setReorganizeMode] = useState(false)
   const [showDeleted, setShowDeleted] = useState(false)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [cartNotification, setCartNotification] = useState<string | null>(null)
 
   useEffect(() => {
     loadData()
@@ -119,7 +120,7 @@ export default function CommandeFournisseurs() {
       const matchesSupplier = p.supplier_id === selectedSupplier
       const matchesSearch = p.product_name.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesCategory = selectedCategory === 'all' || p.category_name === selectedCategory
-      const matchesDeletedFilter = showDeleted || p.is_active !== false // Afficher tous si showDeleted, sinon seulement actifs
+      const matchesDeletedFilter = showDeleted || p.is_active !== false
       return matchesSupplier && matchesSearch && matchesCategory && matchesDeletedFilter
     })
     .sort((a, b) => (a.custom_order ?? 0) - (b.custom_order ?? 0))
@@ -139,6 +140,10 @@ export default function CommandeFournisseurs() {
       const existingItem = supplierCart.find(item => item.product.product_id === product.product_id)
       
       if (existingItem) {
+        // Afficher notification avec le nouveau compteur
+        setCartNotification(`+1`)
+        setTimeout(() => setCartNotification(null), 800)
+        
         return {
           ...prev,
           [supplierId]: supplierCart.map(item =>
@@ -148,6 +153,10 @@ export default function CommandeFournisseurs() {
           )
         }
       }
+      
+      // Nouveau produit ajouté
+      setCartNotification('+1')
+      setTimeout(() => setCartNotification(null), 800)
       
       return {
         ...prev,
@@ -252,14 +261,13 @@ export default function CommandeFournisseurs() {
     }
 
     try {
-      // Soft delete : on met is_active = false
       await api.update('products', productId, {
         is_active: false,
         deleted_at: new Date().toISOString()
       })
 
       alert('✅ Produit mis à la corbeille !')
-      loadData() // Recharger la liste
+      loadData()
     } catch (err) {
       console.error('Erreur:', err)
       alert('❌ Erreur lors de la suppression du produit')
@@ -319,7 +327,6 @@ export default function CommandeFournisseurs() {
     }
   }
 
-  // Fonctions de drag & drop pour réorganiser les produits
   const handleDragStart = (index: number) => {
     setDraggedIndex(index)
   }
@@ -340,13 +347,11 @@ export default function CommandeFournisseurs() {
     const [draggedProduct] = newProducts.splice(draggedIndex, 1)
     newProducts.splice(dropIndex, 0, draggedProduct)
 
-    // Mettre à jour l'ordre avec les indices
     const updatedProducts = newProducts.map((product, idx) => ({
       ...product,
       custom_order: idx
     }))
 
-    // Sauvegarder l'ordre dans le state
     setProducts(prevProducts => {
       const otherProducts = prevProducts.filter(p => p.supplier_id !== selectedSupplier)
       return [...otherProducts, ...updatedProducts].sort((a, b) => 
@@ -354,7 +359,6 @@ export default function CommandeFournisseurs() {
       )
     })
 
-    // Sauvegarder dans localStorage
     const orderMap: Record<string, number> = {}
     updatedProducts.forEach((product, idx) => {
       orderMap[product.product_id] = idx
@@ -367,47 +371,26 @@ export default function CommandeFournisseurs() {
     setDraggedIndex(null)
   }
 
-  const saveProductOrder = async () => {
-    try {
-      const orderMap: Record<string, number> = {}
-      filteredProducts.forEach((product, idx) => {
-        orderMap[product.product_id] = idx
-      })
-
-      // Sauvegarder dans localStorage
-      const existingOrders = JSON.parse(localStorage.getItem('productOrders') || '{}')
-      const newOrders = { ...existingOrders, ...orderMap }
-      localStorage.setItem('productOrders', JSON.stringify(newOrders))
-
-      // TODO: Ajouter l'appel API pour sauver dans Supabase si nécessaire
-      // await api.callRPC('save_product_orders', { orders: orderMap })
-
-      alert('✅ Ordre des produits sauvegardé !')
-    } catch (err) {
-      console.error('Erreur:', err)
-      alert('❌ Erreur lors de la sauvegarde')
-    }
-  }
-
   const currentSupplier = suppliers.find(s => s.id === selectedSupplier)
   const currentCart = cart[selectedSupplier] || []
   const cartTotal = currentCart.reduce((sum, item) => 
     sum + (item.product.unit_price * item.quantity * (1 + item.product.vat_rate / 100)), 0
   )
+  const totalItems = currentCart.reduce((sum, item) => sum + item.quantity, 0)
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
-          <p className="text-xl font-semibold text-gray-700">Chargement des produits...</p>
+          <p className="text-xl font-semibold text-gray-800">Chargement des produits...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       {/* En-tête avec sélection fournisseur */}
       <div className="bg-white rounded-2xl shadow-lg p-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -426,15 +409,16 @@ export default function CommandeFournisseurs() {
             </select>
           </div>
 
+          {/* Bouton panier desktop seulement */}
           <button
             onClick={() => setShowCart(true)}
-            className="relative bg-blue-600 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-blue-700 transition flex items-center gap-2 whitespace-nowrap"
+            className="hidden sm:flex relative bg-blue-600 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-blue-700 transition items-center gap-2 whitespace-nowrap"
           >
             <ShoppingCart size={18} />
             Panier
-            {currentCart.length > 0 && (
+            {totalItems > 0 && (
               <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                {currentCart.length}
+                {totalItems}
               </span>
             )}
           </button>
@@ -445,7 +429,7 @@ export default function CommandeFournisseurs() {
       <div className="bg-white rounded-2xl shadow-lg p-4">
         <div className="flex flex-col sm:flex-row gap-3 mb-3">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
             <input
               type="text"
               placeholder="Rechercher un produit..."
@@ -457,7 +441,6 @@ export default function CommandeFournisseurs() {
 
           {/* Barre ultra-compacte fusionnée */}
           <div className="flex gap-0.5 items-center bg-gray-100 p-0.5 rounded-lg shadow-sm">
-            {/* Vue Liste/Grille */}
             <button
               onClick={() => {
                 setViewMode('list')
@@ -489,7 +472,6 @@ export default function CommandeFournisseurs() {
             
             <div className="w-px h-5 bg-gray-300 mx-0.5"></div>
             
-            {/* Réorganiser */}
             <button
               onClick={() => setReorganizeMode(!reorganizeMode)}
               className={`p-1.5 rounded transition ${
@@ -502,7 +484,6 @@ export default function CommandeFournisseurs() {
               <Move size={16} />
             </button>
             
-            {/* Corbeille */}
             <button
               onClick={() => setShowDeleted(!showDeleted)}
               className={`p-1.5 rounded transition ${
@@ -517,7 +498,6 @@ export default function CommandeFournisseurs() {
             
             <div className="w-px h-5 bg-gray-300 mx-0.5"></div>
             
-            {/* Ajouter */}
             <button
               onClick={() => setShowAddProduct(true)}
               className="bg-green-600 text-white px-2 py-1.5 rounded hover:bg-green-700 transition flex items-center gap-1 text-xs font-medium shadow-sm"
@@ -617,7 +597,7 @@ export default function CommandeFournisseurs() {
                           {product.category_name}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-600">
+                      <td className="px-4 py-3 text-gray-800 font-medium">
                         {product.packaging_info || '-'}
                       </td>
                       <td className="px-4 py-3 font-semibold text-gray-900">
@@ -635,11 +615,10 @@ export default function CommandeFournisseurs() {
                           )}
                           
                           {isDeleted ? (
-                            // Boutons pour produits supprimés
                             <>
                               <button
                                 onClick={() => handleRestoreProduct(product.product_id, product.product_name)}
-                                className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition flex items-center gap-1"
+                                className="p-2 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-lg transition flex items-center gap-1 font-medium"
                                 title="Restaurer"
                               >
                                 <RotateCcw size={18} />
@@ -647,18 +626,17 @@ export default function CommandeFournisseurs() {
                               </button>
                               <button
                                 onClick={() => handleDeletePermanently(product.product_id, product.product_name)}
-                                className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                className="p-2 text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
                                 title="Supprimer définitivement"
                               >
                                 <Trash2 size={18} />
                               </button>
                             </>
                           ) : (
-                            // Boutons normaux
                             <>
                               <button
                                 onClick={() => setEditingProduct(product)}
-                                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                className="p-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
                                 title="Modifier"
                                 disabled={reorganizeMode}
                               >
@@ -666,7 +644,7 @@ export default function CommandeFournisseurs() {
                               </button>
                               <button
                                 onClick={() => handleDeleteProduct(product.product_id, product.product_name)}
-                                className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                className="p-2 text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
                                 title="Mettre à la corbeille"
                                 disabled={reorganizeMode}
                               >
@@ -727,19 +705,18 @@ export default function CommandeFournisseurs() {
                   </div>
                   <div className="p-4">
                     <h3 className="font-bold text-lg text-gray-900 mb-2">{product.product_name}</h3>
-                    <p className="text-sm text-gray-600 mb-2">{product.packaging_info || 'Conditionnement standard'}</p>
+                    <p className="text-sm text-gray-800 mb-2 font-medium">{product.packaging_info || 'Conditionnement standard'}</p>
                     <div className="flex items-center justify-between mb-3">
                       <span className="inline-flex px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
                         {product.category_name}
                       </span>
                       <div className="text-right">
-                        <div className="text-sm text-gray-600">HT: {product.unit_price.toFixed(2)}€</div>
+                        <div className="text-sm text-gray-800 font-medium">HT: {product.unit_price.toFixed(2)}€</div>
                         <div className="text-lg font-bold text-blue-600">TTC: {priceTTC.toFixed(2)}€</div>
                       </div>
                     </div>
                     <div className="flex gap-2">
                       {isDeleted ? (
-                        // Boutons pour produits supprimés
                         <>
                           <button
                             onClick={() => handleRestoreProduct(product.product_id, product.product_name)}
@@ -751,14 +728,13 @@ export default function CommandeFournisseurs() {
                           </button>
                           <button
                             onClick={() => handleDeletePermanently(product.product_id, product.product_name)}
-                            className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                            className="p-2 text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
                             title="Supprimer définitivement"
                           >
                             <Trash2 size={18} className="mx-auto" />
                           </button>
                         </>
                       ) : (
-                        // Boutons normaux
                         <>
                           {reorganizeMode && (
                             <div className="p-2 text-gray-400">
@@ -767,7 +743,7 @@ export default function CommandeFournisseurs() {
                           )}
                           <button
                             onClick={() => setEditingProduct(product)}
-                            className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                            className="p-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
                             title="Modifier"
                             disabled={reorganizeMode}
                           >
@@ -775,7 +751,7 @@ export default function CommandeFournisseurs() {
                           </button>
                           <button
                             onClick={() => handleDeleteProduct(product.product_id, product.product_name)}
-                            className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                            className="p-2 text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
                             title="Mettre à la corbeille"
                             disabled={reorganizeMode}
                           >
@@ -798,6 +774,28 @@ export default function CommandeFournisseurs() {
           </div>
         )}
       </div>
+
+      {/* Bouton Panier Flottant FIXE (mobile et desktop) */}
+      <button
+        onClick={() => setShowCart(true)}
+        className="fixed bottom-6 right-6 z-40 bg-blue-600 text-white p-4 rounded-full shadow-2xl hover:bg-blue-700 transition-all hover:scale-110 active:scale-95"
+        aria-label="Ouvrir le panier"
+      >
+        <ShoppingCart size={24} />
+        {totalItems > 0 && (
+          <>
+            <span className="absolute -top-2 -right-2 bg-red-600 text-white text-sm font-bold rounded-full w-8 h-8 flex items-center justify-center border-2 border-white shadow-lg">
+              {totalItems}
+            </span>
+            {/* Notification d'ajout */}
+            {cartNotification && (
+              <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs font-bold rounded-full px-2 py-1 animate-ping">
+                {cartNotification}
+              </span>
+            )}
+          </>
+        )}
+      </button>
 
       {/* Modal Panier */}
       {showCart && (
@@ -868,9 +866,12 @@ function CartModal({
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
                       <h3 className="font-bold text-gray-900">{item.product.product_name}</h3>
-                      <p className="text-sm text-gray-600">{item.product.packaging_info}</p>
+                      <p className="text-sm text-gray-800 font-medium">{item.product.packaging_info}</p>
                       <p className="text-sm font-semibold text-blue-600 mt-1">
-                        {(item.product.unit_price * (1 + item.product.vat_rate / 100)).toFixed(2)}€ TTC
+                        {(item.product.unit_price * (1 + item.product.vat_rate / 100)).toFixed(2)}€ TTC × {item.quantity}
+                      </p>
+                      <p className="text-base font-bold text-gray-900 mt-1">
+                        Total: {(item.product.unit_price * (1 + item.product.vat_rate / 100) * item.quantity).toFixed(2)}€
                       </p>
                     </div>
                     <button
@@ -883,7 +884,7 @@ function CartModal({
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => onUpdateQuantity(item.product.supplier_id, item.product.product_id, item.quantity - 1)}
-                      className="bg-gray-200 hover:bg-gray-300 w-10 h-10 rounded-lg font-bold"
+                      className="bg-gray-200 hover:bg-gray-300 w-10 h-10 rounded-lg font-bold text-gray-900"
                     >
                       -
                     </button>
@@ -891,7 +892,7 @@ function CartModal({
                       type="number"
                       value={item.quantity}
                       onChange={(e) => onUpdateQuantity(item.product.supplier_id, item.product.product_id, parseInt(e.target.value) || 0)}
-                      className="w-20 text-center border-2 border-gray-300 rounded-lg py-2 font-semibold"
+                      className="w-20 text-center border-2 border-gray-300 rounded-lg py-2 font-semibold text-gray-900"
                     />
                     <button
                       onClick={() => onUpdateQuantity(item.product.supplier_id, item.product.product_id, item.quantity + 1)}
@@ -905,7 +906,7 @@ function CartModal({
 
               <div className="border-t-2 pt-4">
                 <div className="flex justify-between items-center text-xl font-bold mb-4">
-                  <span>Total TTC:</span>
+                  <span className="text-gray-900">Total TTC:</span>
                   <span className="text-blue-600">{total.toFixed(2)}€</span>
                 </div>
                 
@@ -933,7 +934,7 @@ function CartModal({
   )
 }
 
-// Composant Modal Produit (simplifié pour l'exemple)
+// Composant Modal Produit
 function ProductModal({ product, supplierId, onClose, onSuccess }: any) {
   const [formData, setFormData] = useState({
     name: product?.product_name || '',
@@ -955,13 +956,11 @@ function ProductModal({ product, supplierId, onClose, onSuccess }: any) {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Vérifier le type
     if (!file.type.startsWith('image/')) {
       alert('❌ Seulement des images')
       return
     }
 
-    // Vérifier la taille (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert('❌ Image trop grosse (max 5MB)')
       return
@@ -969,7 +968,6 @@ function ProductModal({ product, supplierId, onClose, onSuccess }: any) {
 
     setImageFile(file)
     
-    // Créer preview
     const reader = new FileReader()
     reader.onload = () => {
       setImagePreview(reader.result as string)
@@ -982,11 +980,9 @@ function ProductModal({ product, supplierId, onClose, onSuccess }: any) {
 
     setUploading(true)
     try {
-      // Générer nom unique
       const fileExt = imageFile.name.split('.').pop()
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
       
-      // Upload vers Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('product-images')
         .upload(fileName, imageFile, {
@@ -999,7 +995,6 @@ function ProductModal({ product, supplierId, onClose, onSuccess }: any) {
         throw uploadError
       }
 
-      // Récupérer l'URL publique
       const { data: { publicUrl } } = supabase.storage
         .from('product-images')
         .getPublicUrl(fileName)
@@ -1019,10 +1014,8 @@ function ProductModal({ product, supplierId, onClose, onSuccess }: any) {
     setLoading(true)
 
     try {
-      // 1. Upload image si nécessaire
       const imageUrl = await uploadImage()
       
-      // 2. Créer/Modifier le produit
       const productData = {
         name: formData.name,
         description: formData.description,
@@ -1034,15 +1027,12 @@ function ProductModal({ product, supplierId, onClose, onSuccess }: any) {
       let productId = product?.product_id
 
       if (product) {
-        // Mode édition
         await api.update('products', product.product_id, productData)
       } else {
-        // Mode création
         const newProduct = await api.create('products', productData)
         productId = newProduct.id
       }
 
-      // 3. Mettre à jour le prix dans supplier_products
       if (supplierId && formData.unit_price) {
         const priceData = {
           product_id: productId,
@@ -1051,7 +1041,6 @@ function ProductModal({ product, supplierId, onClose, onSuccess }: any) {
           vat_rate: parseFloat(formData.vat_rate)
         }
 
-        // Vérifier si le lien existe déjà avec Supabase
         const { data: existing, error: queryError } = await supabase
           .from('supplier_products')
           .select('id')
@@ -1060,10 +1049,8 @@ function ProductModal({ product, supplierId, onClose, onSuccess }: any) {
           .single()
 
         if (existing && !queryError) {
-          // Update - le lien existe déjà
           await api.update('supplier_products', existing.id, priceData)
         } else {
-          // Create - nouveau lien
           await api.create('supplier_products', priceData)
         }
       }
