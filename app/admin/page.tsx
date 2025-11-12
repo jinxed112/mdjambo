@@ -1323,4 +1323,4 @@ function ProductModal({ product, supplierId, onClose, onSuccess }: any) {
       </div>
     </>
   )
-}
+} 
