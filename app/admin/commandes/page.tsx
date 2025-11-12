@@ -58,6 +58,7 @@ export default function CommandeFournisseurs() {
   const [showDeleted, setShowDeleted] = useState(false)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [cartNotification, setCartNotification] = useState<string | null>(null)
+  const scrollPositionRef = useRef<number>(0)
 
   useEffect(() => {
     loadData()
@@ -261,13 +262,21 @@ export default function CommandeFournisseurs() {
     }
 
     try {
+      // Sauvegarder la position de scroll
+      scrollPositionRef.current = window.scrollY
+
       await api.update('products', productId, {
         is_active: false,
         deleted_at: new Date().toISOString()
       })
 
       alert('✅ Produit mis à la corbeille !')
-      loadData()
+      await loadData()
+      
+      // Restaurer la position de scroll
+      setTimeout(() => {
+        window.scrollTo({ top: scrollPositionRef.current, behavior: 'instant' })
+      }, 50)
     } catch (err) {
       console.error('Erreur:', err)
       alert('❌ Erreur lors de la suppression du produit')
@@ -280,13 +289,21 @@ export default function CommandeFournisseurs() {
     }
 
     try {
+      // Sauvegarder la position de scroll
+      scrollPositionRef.current = window.scrollY
+
       await api.update('products', productId, {
         is_active: true,
         deleted_at: null
       })
 
       alert('✅ Produit restauré !')
-      loadData()
+      await loadData()
+      
+      // Restaurer la position de scroll
+      setTimeout(() => {
+        window.scrollTo({ top: scrollPositionRef.current, behavior: 'instant' })
+      }, 50)
     } catch (err) {
       console.error('Erreur:', err)
       alert('❌ Erreur lors de la restauration')
@@ -303,6 +320,9 @@ export default function CommandeFournisseurs() {
     }
 
     try {
+      // Sauvegarder la position de scroll
+      scrollPositionRef.current = window.scrollY
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/products?id=eq.${productId}`,
         {
@@ -320,7 +340,12 @@ export default function CommandeFournisseurs() {
       }
 
       alert('✅ Produit supprimé définitivement')
-      loadData()
+      await loadData()
+      
+      // Restaurer la position de scroll
+      setTimeout(() => {
+        window.scrollTo({ top: scrollPositionRef.current, behavior: 'instant' })
+      }, 50)
     } catch (err) {
       console.error('Erreur:', err)
       alert('❌ Erreur lors de la suppression définitive')
@@ -820,10 +845,20 @@ export default function CommandeFournisseurs() {
             setShowAddProduct(false)
             setEditingProduct(null)
           }}
-          onSuccess={() => {
+          onSuccess={async () => {
+            // Sauvegarder la position de scroll actuelle
+            scrollPositionRef.current = window.scrollY
+            
             setShowAddProduct(false)
             setEditingProduct(null)
-            loadData()
+            
+            // Recharger les données
+            await loadData()
+            
+            // Restaurer la position de scroll après un court délai
+            setTimeout(() => {
+              window.scrollTo({ top: scrollPositionRef.current, behavior: 'instant' })
+            }, 50)
           }}
         />
       )}
@@ -950,7 +985,26 @@ function ProductModal({ product, supplierId, onClose, onSuccess }: any) {
   const [uploading, setUploading] = useState(false)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState(product?.image_url || '')
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    loadCategories()
+  }, [])
+
+  const loadCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('id, name')
+        .order('name')
+      
+      if (error) throw error
+      setCategories(data || [])
+    } catch (err) {
+      console.error('Erreur chargement catégories:', err)
+    }
+  }
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -1021,7 +1075,8 @@ function ProductModal({ product, supplierId, onClose, onSuccess }: any) {
         description: formData.description,
         packaging_info: formData.packaging_info,
         notes: formData.notes,
-        image_url: imageUrl || formData.image_url
+        image_url: imageUrl || formData.image_url,
+        category_id: formData.category_id || null
       }
 
       let productId = product?.product_id
@@ -1056,7 +1111,7 @@ function ProductModal({ product, supplierId, onClose, onSuccess }: any) {
       }
 
       alert('✅ Produit enregistré avec succès !')
-      onSuccess()
+      await onSuccess()
     } catch (err) {
       console.error('Erreur:', err)
       alert('❌ Erreur lors de l\'enregistrement')
@@ -1133,6 +1188,24 @@ function ProductModal({ product, supplierId, onClose, onSuccess }: any) {
               className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-900 placeholder:text-gray-500"
               placeholder="Ex: Bifteck de bœuf"
             />
+          </div>
+
+          {/* Catégorie */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-1">
+              Catégorie *
+            </label>
+            <select
+              required
+              value={formData.category_id}
+              onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-900"
+            >
+              <option value="">-- Sélectionner une catégorie --</option>
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
           </div>
 
           {/* Prix et TVA */}
