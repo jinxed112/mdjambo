@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 // Types
 interface Product {
@@ -9,6 +9,7 @@ interface Product {
     traces?: Allergen[]
     ingredients?: string
     supplier?: string
+    category?: string
 }
 
 interface Allergen {
@@ -34,8 +35,8 @@ const ALLERGENS = {
     mollusques: { name: 'Mollusques', emoji: '🦪' },
 }
 
-// Menu avec allergènes
-const MENU: Record<string, Product[]> = {
+// Données statiques par défaut (fallback si API échoue)
+const DEFAULT_MENU: Record<string, Product[]> = {
     'Philly Cheese Steaks': [
         {
             name: 'Pain Philly Cheese Steak',
@@ -88,87 +89,11 @@ const MENU: Record<string, Product[]> = {
             ingredients: 'Bun sésame, steak smashé bœuf, cheddar, salade, tomate.'
         },
     ],
-    'Mitraillettes': [
-        {
-            name: 'Mitraillette Hamburger',
-            allergens: [ALLERGENS.gluten, ALLERGENS.oeufs, ALLERGENS.moutarde, ALLERGENS.soja],
-            traces: [ALLERGENS.lait],
-            ingredients: 'Baguette, hamburger Snaky, frites, sauce au choix.'
-        },
-        {
-            name: 'Mitraillette Boulettes',
-            allergens: [ALLERGENS.gluten, ALLERGENS.oeufs, ALLERGENS.moutarde, ALLERGENS.soja],
-            traces: [ALLERGENS.lait],
-            ingredients: 'Baguette, boulettes Super Snaky, frites, sauce au choix.'
-        },
-        {
-            name: 'Mitraillette Fricandelle',
-            allergens: [ALLERGENS.gluten, ALLERGENS.oeufs, ALLERGENS.moutarde, ALLERGENS.soja, ALLERGENS.celeri],
-            traces: [ALLERGENS.lait],
-            ingredients: 'Baguette, fricandelle Snaky, frites, sauce au choix.'
-        },
-        {
-            name: 'Mitraillette Poulet',
-            allergens: [ALLERGENS.gluten, ALLERGENS.oeufs, ALLERGENS.moutarde, ALLERGENS.soja],
-            traces: [ALLERGENS.lait],
-            ingredients: 'Baguette, burger poulet Krumpy, frites, sauce au choix.'
-        },
-    ],
     'Frites': [
         {
             name: 'Frites Maison',
             allergens: [],
             ingredients: 'Pommes de terre Bintje, graisse de bœuf Baeten 100% belge. Double cuisson traditionnelle.'
-        },
-    ],
-    'Snacks & Fritures': [
-        {
-            name: 'Hamburger Snaky',
-            allergens: [ALLERGENS.gluten, ALLERGENS.soja],
-            traces: [ALLERGENS.lait],
-            supplier: 'De Boeck Foods'
-        },
-        {
-            name: 'Boulette Super Snaky',
-            allergens: [ALLERGENS.gluten, ALLERGENS.soja],
-            traces: [ALLERGENS.lait, ALLERGENS.oeufs],
-            supplier: 'De Boeck Foods'
-        },
-        {
-            name: 'Fricandelle Snaky',
-            allergens: [ALLERGENS.gluten, ALLERGENS.soja, ALLERGENS.celeri],
-            traces: [ALLERGENS.lait],
-            supplier: 'De Boeck Foods'
-        },
-        {
-            name: 'Cervelas Maxi Snaky',
-            allergens: [ALLERGENS.gluten, ALLERGENS.soja, ALLERGENS.moutarde],
-            traces: [ALLERGENS.lait],
-            supplier: 'De Boeck Foods'
-        },
-        {
-            name: 'Mexicain Snaky',
-            allergens: [ALLERGENS.gluten, ALLERGENS.soja, ALLERGENS.celeri],
-            traces: [ALLERGENS.lait],
-            supplier: 'De Boeck Foods'
-        },
-        {
-            name: 'Nuggets Poulet',
-            allergens: [ALLERGENS.gluten, ALLERGENS.soja],
-            traces: [ALLERGENS.lait, ALLERGENS.oeufs],
-            supplier: 'De Boeck Foods (Nuggizz Mad Roosters)'
-        },
-        {
-            name: 'Croquette Fromage',
-            allergens: [ALLERGENS.gluten, ALLERGENS.lait, ALLERGENS.oeufs],
-            traces: [ALLERGENS.soja],
-            supplier: 'De Boeck Foods (Cheese Crack BK)'
-        },
-        {
-            name: 'Groovy Tenders',
-            allergens: [ALLERGENS.gluten, ALLERGENS.soja],
-            traces: [ALLERGENS.lait, ALLERGENS.oeufs],
-            supplier: 'De Boeck Foods (Mahida)'
         },
     ],
     'Sauces': [
@@ -212,13 +137,6 @@ const MENU: Record<string, Product[]> = {
             name: 'Sauce Ketjep / Curry Ketchup',
             allergens: [ALLERGENS.celeri],
             supplier: 'De Boeck Foods (Sauce 16/20 Ketjep)'
-        },
-    ],
-    'Boissons': [
-        {
-            name: 'Toutes nos boissons',
-            allergens: [],
-            ingredients: 'Coca-Cola, Fanta, Sprite, Ice Tea, Eau, Cuvée des Trolls, etc.'
         },
     ],
 }
@@ -276,6 +194,48 @@ function ProductCard({ product }: { product: Product }) {
 }
 
 export default function AllergenesPage() {
+    const [menu, setMenu] = useState<Record<string, Product[]>>(DEFAULT_MENU)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        const fetchAllergens = async () => {
+            try {
+                const response = await fetch('/api/allergens')
+                if (!response.ok) throw new Error('Failed to fetch')
+
+                const result = await response.json()
+                if (result.success && result.data) {
+                    // Fusionner les données de la DB avec les données statiques
+                    const mergedMenu = { ...DEFAULT_MENU }
+
+                    // Ajouter les nouvelles catégories de la DB
+                    Object.entries(result.data).forEach(([category, products]) => {
+                        if (!mergedMenu[category]) {
+                            mergedMenu[category] = products as Product[]
+                        }
+                    })
+
+                    setMenu(mergedMenu)
+                }
+            } catch (error) {
+                console.error('Error loading allergens:', error)
+                // Garder les données par défaut en cas d'erreur
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchAllergens()
+    }, [])
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-600 border-t-transparent"></div>
+            </div>
+        )
+    }
+
     return (
         <main className="min-h-screen bg-gray-100">
             {/* Hero */}
@@ -303,7 +263,7 @@ export default function AllergenesPage() {
 
             {/* Menu */}
             <section className="max-w-6xl mx-auto px-4 pb-12">
-                {Object.entries(MENU).map(([category, products]) => (
+                {Object.entries(menu).map(([category, products]) => (
                     <div key={category} className="mb-8">
                         <h2 className="font-bebas text-3xl mb-4 pl-4 border-l-4 border-red-600 tracking-wide">
                             {category.toUpperCase()}
