@@ -41,14 +41,17 @@ export default function Header() {
           <Link href="/#menu" className="hover:text-red-600 transition font-medium">
             Menu
           </Link>
+          <Link href="/allergenes" className="hover:text-red-600 transition font-medium">
+            Allergènes
+          </Link>
           <Link href="/#location" className="hover:text-red-600 transition font-medium">
             Contact
           </Link>
 
           {user ? (
             <>
-              <Link 
-                href="/admin" 
+              <Link
+                href="/admin"
                 className="hover:text-red-600 transition flex items-center gap-2 font-medium"
               >
                 <LayoutDashboard size={18} />
@@ -88,43 +91,50 @@ export default function Header() {
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-t">
           <div className="flex flex-col p-4 gap-4">
-            <Link 
-              href="/#menu" 
+            <Link
+              href="/#menu"
               onClick={() => setMobileMenuOpen(false)}
               className="font-medium"
             >
               Menu
             </Link>
-            <Link 
-              href="/#location" 
+            <Link
+              href="/allergenes"
+              onClick={() => setMobileMenuOpen(false)}
+              className="font-medium"
+            >
+              Allergènes
+            </Link>
+            <Link
+              href="/#location"
               onClick={() => setMobileMenuOpen(false)}
               className="font-medium"
             >
               Contact
             </Link>
-            
+
             {user ? (
               <>
-                <Link 
-                  href="/admin" 
+                <Link
+                  href="/admin"
                   onClick={() => setMobileMenuOpen(false)}
                   className="font-medium"
                 >
                   Admin
                 </Link>
-                <button 
+                <button
                   onClick={() => {
                     handleLogout()
                     setMobileMenuOpen(false)
-                  }} 
+                  }}
                   className="text-left font-medium"
                 >
                   Déconnexion
                 </button>
               </>
             ) : (
-              <Link 
-                href="/login" 
+              <Link
+                href="/login"
                 onClick={() => setMobileMenuOpen(false)}
                 className="font-medium"
               >
