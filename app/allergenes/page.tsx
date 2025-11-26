@@ -277,28 +277,53 @@ function ProductCard({ product }: { product: Product }) {
 }
 
 export default function AllergenesPage() {
-    const [menu] = useState<Record<string, Product[]>>(DEFAULT_MENU)
+    const [menu, setMenu] = useState<Record<string, Product[]>>(DEFAULT_MENU)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        // Désactiver l'appel API pour garder uniquement les données statiques vérifiées
-        // L'API sera réactivée quand les allergènes seront gérés en DB
-        setLoading(false)
-
-        /* Code API désactivé temporairement
         const fetchAllergens = async () => {
             try {
-                const response = await fetch('/api/allergens')
+                const response = await fetch('/api/public-menu')
                 if (!response.ok) throw new Error('Failed to fetch')
 
                 const result = await response.json()
                 if (result.success && result.data) {
-                    const mergedMenu = { ...DEFAULT_MENU }
+                    const mergedMenu: Record<string, Product[]> = {}
+
+                    const staticProductsMap = new Map<string, Product>()
+                    Object.values(DEFAULT_MENU).flat().forEach(p => {
+                        staticProductsMap.set(p.name.toLowerCase(), p)
+                    })
+
                     Object.entries(result.data).forEach(([category, products]) => {
                         if (!mergedMenu[category]) {
-                            mergedMenu[category] = products as Product[]
+                            mergedMenu[category] = []
+                        }
+
+                        (products as Product[]).forEach(dbProduct => {
+                            if (dbProduct.allergens.length === 0 && (!dbProduct.traces || dbProduct.traces.length === 0)) {
+                                const staticProduct = staticProductsMap.get(dbProduct.name.toLowerCase())
+                                if (staticProduct) {
+                                    mergedMenu[category].push({
+                                        ...dbProduct,
+                                        allergens: staticProduct.allergens,
+                                        traces: staticProduct.traces,
+                                        ingredients: dbProduct.ingredients || staticProduct.ingredients,
+                                        supplier: dbProduct.supplier || staticProduct.supplier
+                                    })
+                                    return
+                                }
+                            }
+                            mergedMenu[category].push(dbProduct)
+                        })
+                    })
+
+                    Object.entries(DEFAULT_MENU).forEach(([category, products]) => {
+                        if (!mergedMenu[category]) {
+                            mergedMenu[category] = products
                         }
                     })
+
                     setMenu(mergedMenu)
                 }
             } catch (error) {
@@ -307,8 +332,8 @@ export default function AllergenesPage() {
                 setLoading(false)
             }
         }
+
         fetchAllergens()
-        */
     }, [])
 
     if (loading) {
