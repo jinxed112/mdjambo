@@ -4,10 +4,14 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Les tables du portail vivent dans le schéma "portail" du projet Supabase
+// (partagé avec FritOS SaaS qui occupe "public") — restauration du 2026-07-02.
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  db: { schema: 'portail' },
+})
 
 export const createSupabaseClient = () => {
-  return createClientComponentClient()
+  return createClientComponentClient({ options: { db: { schema: 'portail' } } })
 }
 
 export type Reservation = {
