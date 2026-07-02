@@ -2,6 +2,11 @@
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
+// Les tables du portail vivent dans le schéma "portail" (projet Supabase
+// partagé avec FritOS SaaS). PostgREST choisit le schéma via ces en-têtes :
+// Accept-Profile pour GET, Content-Profile pour POST/PATCH/DELETE/RPC.
+const DB_SCHEMA = 'portail'
+
 export const api = {
   // Helper pour les appels RPC
   async callRPC(functionName: string, params: any = {}) {
@@ -12,7 +17,8 @@ export const api = {
         headers: {
           'apikey': SUPABASE_KEY,
           'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Content-Profile': DB_SCHEMA
         },
         body: JSON.stringify(params)
       }
@@ -53,7 +59,8 @@ export const api = {
       headers: {
         'apikey': SUPABASE_KEY,
         'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept-Profile': DB_SCHEMA
       }
     })
 
@@ -74,6 +81,7 @@ export const api = {
           'apikey': SUPABASE_KEY,
           'Authorization': `Bearer ${SUPABASE_KEY}`,
           'Content-Type': 'application/json',
+          'Content-Profile': DB_SCHEMA,
           'Prefer': 'return=representation'
         },
         body: JSON.stringify(data)
@@ -99,6 +107,7 @@ export const api = {
           'apikey': SUPABASE_KEY,
           'Authorization': `Bearer ${SUPABASE_KEY}`,
           'Content-Type': 'application/json',
+          'Content-Profile': DB_SCHEMA,
           'Prefer': 'return=minimal'
         },
         body: JSON.stringify(data)
@@ -122,6 +131,7 @@ export const api = {
         headers: {
           'apikey': SUPABASE_KEY,
           'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Profile': DB_SCHEMA,
           'Prefer': 'return=minimal'
         }
       }
