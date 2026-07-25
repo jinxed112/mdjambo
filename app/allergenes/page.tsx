@@ -407,7 +407,7 @@ export default function AllergenesPage() {
                     <strong>MDjambo</strong> - Rue de Ghlin 2, 7050 Jurbise
                 </p>
                 <p className="opacity-70 text-sm mb-1">
-                    📞 0497 75 35 54 | <a href="https://order.mdjambo.be" className="text-red-500 hover:underline">Commander en ligne</a>
+                    📞 065 94 98 08 | <a href="https://order.mdjambo.be" className="text-red-500 hover:underline">Commander en ligne</a>
                 </p>
                 <p className="opacity-50 text-xs mt-3">
                     Document mis à jour : Novembre 2025 | Conforme au Règlement UE 1169/2011

@@ -67,7 +67,7 @@ export default function ReservationModal({ isOpen, onClose }: ReservationModalPr
                 <div>
                   <p className="font-semibold text-gray-900 mb-1">Ou par téléphone</p>
                   <p className="text-sm text-gray-600">
-                    Appelez-nous au <strong>0497 75 35 54</strong>
+                    Appelez-nous au <strong>065 94 98 08</strong>
                   </p>
                 </div>
               </div>
@@ -87,7 +87,7 @@ export default function ReservationModal({ isOpen, onClose }: ReservationModalPr
             </a>
 
             <a
-              href="tel:+32497753554"
+              href="tel:+3265949808"
               className="w-full bg-green-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-green-700 transition flex items-center justify-center gap-3"
             >
               <Phone size={20} />

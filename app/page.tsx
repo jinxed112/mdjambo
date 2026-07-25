@@ -68,7 +68,7 @@ export default function Home() {
           <span itemProp="postalCode">7050</span> <span itemProp="addressLocality">Jurbise</span>,
           <span itemProp="addressCountry">Belgique</span>
         </p>
-        <p>Téléphone: <span itemProp="telephone">0497 75 35 54</span></p>
+        <p>Téléphone: <span itemProp="telephone">065 94 98 08</span></p>
         <p>Prix: <span itemProp="priceRange">€€</span> (10-20€ par personne)</p>
       </article>
 
@@ -230,7 +230,7 @@ export default function Home() {
               },
               {
                 q: "Quels sont vos horaires ?",
-                a: "Nous sommes ouverts 7 jours sur 7. Lundi-jeudi : 18h-21h. Vendredi-samedi : 18h-21h30. Dimanche : 18h-21h. Réservation conseillée au 0497 75 35 54."
+                a: "Nous sommes ouverts 7 jours sur 7. Lundi-jeudi : 18h-21h. Vendredi-samedi : 18h-21h30. Dimanche : 18h-21h. Réservation conseillée au 065 94 98 08."
               }
             ].map((item, i) => (
               <details key={i} className="bg-white p-6 rounded-xl shadow-sm" itemScope itemType="https://schema.org/Question">
@@ -289,7 +289,7 @@ export default function Home() {
               {
                 icon: "📱",
                 title: "Contact",
-                content: "0497 75 35 54\nRéservation & Info",
+                content: "065 94 98 08\nRéservation & Info",
                 highlight: "Réponse rapide",
               },
               {

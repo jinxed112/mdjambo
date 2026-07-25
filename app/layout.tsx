@@ -65,7 +65,7 @@ export default function RootLayout({
                 "latitude": 50.5235,
                 "longitude": 3.9145
               },
-              "telephone": "+32497753554",
+              "telephone": "+3265949808",
               "priceRange": "€€",
               "servesCuisine": ["American", "Belgian", "Fast Food"],
               "acceptsReservations": true,
